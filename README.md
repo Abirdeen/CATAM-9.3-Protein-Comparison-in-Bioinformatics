@@ -141,3 +141,22 @@ MGLSDGEWQL VLKVWGKVEG DLPGHGQEVL IRLFKTHPET LEK FDKFKG
 MADFDA     VLKCWGPVEA DYTTMGGLVL TRLFKEHPET Q KLFPKFAG
 ```
 
+### Problem 4
+
+For historical reasons, we now talk about maximising a score rather than minimizing a distance. Let $v(S,T)$ be the maximum score of all edit transcripts from S to T.
+
+Using the BLOSUM matrix `blosum.txt` from the CATAM website for the scoring function $s$, and scoring $-8$ for each Insert or Delete, find the score $v$ between proteins $A$ and $B$ and give the first 50 steps of the optimal alignment.
+
+#### Solution
+
+We have included the json file `BLOSOM.json`, which contains the same data as as `BLOSOM.txt`.
+
+This optimisation algorithm is implemented as `EditDistanceBLOSUM`. Running it on proteins $A$ & $B$, we obtain a score of 290. The first 50 steps of an optimal alignment are given below.
+
+```
+MDDRMDDRRR MMMRMMRMMR MRRRRMRRMM RMMMMRMMMM RRRMRMMRMR
+------------------------------------------------------
+MGLSDGEWQL VLKVWGKVEG DLPGHGQEVL IRLFKTHPET LEKFDKFKGL
+M  AD  FDA VLKCWGPVEA DYTTMGGLVL TRLFKEHPET QKLFPKFAGI
+```
+
