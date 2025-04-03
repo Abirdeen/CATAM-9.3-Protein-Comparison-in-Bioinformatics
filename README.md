@@ -31,6 +31,28 @@ berry
 ```
 The optimal edit transcripts are those that involve the least number of edit operations (Replace, Insert, and Delete). We define the edit distance $d(S, T)$ to be the minimal number of edits to go from $S$ to $T$. We also write $D(i, j) = d(S[1, i], T[1, j])$, and observe that $d(S, T) = D(m, n)$.
 
+### Scoring matrix
+
+A protein is essentially a long sequence of amino acids. Approximately twenty types of amino acid (the exact number is species dependent) are involved in the construction of each protein. A gene is a sequence of DNA which can be translated into a sequence of amino acids, i.e., a protein. Mutations in DNA will lead to changes in the sequence of amino acids, and some mutations are more likely than others.
+
+In [Problem 1](#problem-1), we derive a "scoring function" $s(a, b)$, which is used to measure the cost of replacing $a$ with $b$. However, there are alternative scoring functions we can use, which better model biological processes. The two dominant schemes for assessing the probability of a mutation from amino acid $a$ to amino acid $b$ are the PAM matrices introduced by Dayhoff, and the BLOSUM matrices of Henikoff and Henikoff.
+
+### Scoring for gaps
+
+Some mechanisms for DNA mutations involve the deletion or insertion of large chunks of DNA. Proteins are often composed of combinations of different domains from a relatively small repertoire; so two protein sequences might be relatively similar over several regions, but differ in other regions where one protein contains a certain domain but the other does not.
+
+At some computational cost, we can still align two protein strings taking gaps into account. Let $w(l) < 0$, $l \geq 1$, be the score of deleting (or inserting) a sequence of amino acids of length $l$ from (or into) a protein. Let $v_{gap}(S, T)$ be the gap-weighted score between $S$ and $T$, and write $V_{gap}(i, j)$ for $v_{gap}(S[1, i], T[1, j])$. Then 
+
+$$V_{gap}(i, j) = \max \{E(i, j), F(i, j), G(i, j)\},$$
+
+$$E(i, j) = \max_{0 \leq k \leq j-1} \{V_{gap}(i, k) + w(j - k)\},$$
+
+$$F(i, j) = \max_{0 \leq k \leq i-1} \{V_{gap}(k, j) + w(i - k)\},$$
+
+$$G(i, j) = V_{gap}(i - 1, j - 1) + s(S_i, T_j).$$
+
+Iterating the above equations on the $n \times m$ grid has complexity of $O(mn^2 + nm^2)$. Happily, if $w(l)$ takes some fixed value $u$ for all $l \geq 1$, then there exists an algorithm for finding $v_{gap}$ which has complexity $O(mn)$.
+
 ## Problems
 
 The original CATAM project involved certain explicit questions and problems, which are reproduced (and solved) here.
@@ -160,3 +182,47 @@ MGLSDGEWQL VLKVWGKVEG DLPGHGQEVL IRLFKTHPET LEKFDKFKGL
 M  AD  FDA VLKCWGPVEA DYTTMGGLVL TRLFKEHPET QKLFPKFAGI
 ```
 
+### Problem 5
+
+Find and implement an algorithm for computing $v_{gap}$ when $w(l) = u$ is fixed for $l \geq 1$. Explain how your algorithm works, and why it has complexity $O(mn)$. What boundary conditions do you use?
+
+#### Solution
+
+Since $w(l)$ is constant for $l \geq 1$, and since 
+
+$$\max_{0\leq k\leq n} \{x_k\} = \max\{x_n, \max_{0\leq k \leq n-1} \{x_k\}\},$$
+
+we can simplify the computation of $V_{gap}(i,j)$:
+
+$$V_{gap}(i, j) = \max \{E(i, j), F(i, j), G(i, j)\},$$
+
+$$E(i, j) = \max \{V_{gap}(i, j-1) + u, E(i,j-1)\},$$
+
+$$F(i, j) = \max \{V_{gap}(i-1, j) + u, F(i-1,j)\},$$
+
+$$G(i, j) = V_{gap}(i - 1, j - 1) + s(S_i, T_j),$$
+
+At the boundary, we have $V_{gap}(0,k) = V_{gap}(k,0) = u$ for $k > 0$, and $V_{gap}(0,0) = 0$.
+
+We also have $E(0,k) = F(k,0) = u$, $k>0$, and $E(0,0) = F(0,0) = 0$.
+
+We set $E(k,0) = F(0,k) = 3 \times u$ to ensure they are never the maximum in any calculations.
+
+We implement this algorithm as `GappedEditDistanceBLOSOM`.
+
+Again using memoization, we compute each of the values $V_{gap}(i,j), E(i,j), F(i,j), G(i,j)$ exactly once in linear time, giving a complexity of $O(nm)$.
+
+### Problem 6
+
+Take proteins $C$ and $D$ from the file `proteins.txt` on the CATAM website. Both proteins are keratin structures in humans. Using the BLOSUM matrix from Section 2 for the scoring function $s$, and $u = −12$ as the fixed score of insertion/deletion, find the gap-weighted score $v_{gap}(C, D)$ and give the first 50 steps of the optimal alignment.
+
+#### Solution
+
+We compute $v_{gap}(C,D) = 1236$, and the first 50 steps of the optimal alignment are
+
+```
+MRIIIIIIII IIIRRMMMRR MRMRMMRRDD DDDDDDDDDD DDDDDDDDDD
+------------------------------------------------------
+MT            SDCSSTH CSPESCGTAS GCAPASSCSV ETACLPGTCA
+MPYNFCLPSL SCRTSCSSRP CVPPSCHS 
+```
