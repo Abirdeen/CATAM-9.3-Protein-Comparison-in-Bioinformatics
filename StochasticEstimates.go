@@ -13,7 +13,7 @@ func GenerateRandomString(length int, alphabet []string) string {
 }
 
 func AverageDistanceEstimator(num_draws int, size int, alphabet []string, gap_cost int, BLOSOM_matrix map[string]map[string]int) float32 {
-	sum := float32(0)
+	var sum float32
 	for range num_draws {
 		result, _, _, _ := GappedEditDistanceBLOSOM(GenerateRandomString(size, alphabet),
 			GenerateRandomString(size, alphabet),
