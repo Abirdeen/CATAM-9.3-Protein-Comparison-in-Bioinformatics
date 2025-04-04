@@ -53,6 +53,26 @@ $$G(i, j) = V_{gap}(i - 1, j - 1) + s(S_i, T_j).$$
 
 Iterating the above equations on the $n \times m$ grid has complexity of $O(mn^2 + nm^2)$. Happily, if $w(l)$ takes some fixed value $u$ for all $l \geq 1$, then there exists an algorithm for finding $v_{gap}$ which has complexity $O(mn)$.
 
+### Statistical significance
+
+We may now ask at what threshold a score $v_{gap}(S, T)$ should be declared to have biological significance.
+
+Let us simplify the problem slightly. Suppose there are only two letters in our alphabet, $a$ and $b$, corresponding, say, to hydrophobic and hydrophilic amino acids. Let $s(a, a) = s(b, b) = 1$ and $s(a, b) = s(b, a) = -1$. Let $U^n$ be a random protein of length $n$: all the amino acids $U^n_1 , ..., U^n_n$ are independent and identically distributed, with $\mathbb{P}(U^n_i = a) = p$ and $\mathbb{P}(U^n_i = b) = 1 - p$. What should we expect $\mathbb{E}(v_{gap}(U^n, V^n))$ to look like? This question is explored in [Problem 7](#problem-7).
+
+### Local Alignment
+
+Full alignment of proteins is meaningful when the two strings are members of the same family. For example, the full sequences of the oxygen-binding proteins myoglobin and haemoglobin are very similar. Often, though, only a small region of the protein is critical to its function and only this region will be conserved throughout the evolutionary process. When we identify two proteins which perform similar functions but look superficially different, it is useful to identify these highly conserved regions.
+
+We aim to find a pair of substrings $S_0$ and $T_0$ of $S$ and $T$ with the highest alignment score, namely, 
+
+$$v_{sub}(S, T) = \max\{v(S_0, T_0) | S_0 \text{ a substring of }S, T_0 \text{ a substring of }T\}.$$
+
+(For simplicity, we will use the ungapped BLOSOM matrix score. We will also write $s(-, a) = s(a, -) < 0$ for the score of an insertion or deletion.)
+
+Finding $v_{sub}(S, T)$ seems to be of much higher complexity than solving the global alignment problem, as there are $\Theta(n^2m^2)$ combinations of substrings of $S$ and $T$. Amazingly, we can solve it using an algorithm whose complexity is still only $O(mn)$.
+
+This question is tackled in [Problem 9](#problem-9).
+
 ## Problems
 
 The original CATAM project involved certain explicit questions and problems, which are reproduced (and solved) here.
@@ -142,7 +162,7 @@ type Proteins struct {
 
 func main() {
 	var proteins Proteins
-	content, _ := os.ReadFile("./proteins.json")
+	content, _ := os.ReadFile("./assets/proteins.json")
 	json.Unmarshal(content, &proteins)
 	str1 := proteins.A
 	str2 := proteins.B
@@ -226,3 +246,100 @@ MRIIIIIIII IIIRRMMMRR MRMRMMRRDD DDDDDDDDDD DDDDDDDDDD
 MT            SDCSSTH CSPESCGTAS GCAPASSCSV ETACLPGTCA
 MPYNFCLPSL SCRTSCSSRP CVPPSCHS 
 ```
+
+### Problem 7
+
+Consider two random proteins $U^n$ and $V^n$, independent and identically distributed as in the section on [statistical significance](#statistical-significance). Let the score of inserting/deleting a sequence of length $l$ be fixed: $w(l) = u$ for all $l > 1$. Prove that for all $0 \leq p \leq 1$, and for all $u \leq 0$, 
+
+$$\varliminf_{n\rightarrow\infty} \frac{\mathbb{E}(v_{gap}(U^n, V^n))}{n} > 0.$$
+
+(Note: if $x_n$ is a sequence of real numbers, then $\varliminf_{n\rightarrow\infty} x_n$ is defined by $\varliminf_{n\rightarrow\infty} x_n = \lim_{n\rightarrow\infty} \inf_{m>n} x_m$. Note that the limit is always guaranteed to exist, though it may be $+\infty$ or $-\infty$. This is discussed further in most textbooks on analysis.)
+
+In fact, $\lim_{n\rightarrow\infty} n^{-1}\mathbb{E}(v_{gap}(U^n, V^n))$ exists and is strictly positive. One way to obtain an excellence mark in this project, though not the only way, is to show that this limit exists.
+
+#### Solution
+
+Let $w$ be a fixed string of length $k$. Noting that we can delete or insert arbitrarily long sequences for a fixed cost $u$, we can compute $$v_{gap}(U^awU'^b, V^awV'^b) \geq v_{gap}(U^n,V^n) + v_{gap}(w,w) + v_{gap}(U'^n,V'^n) \geq k + 4u.$$ 
+
+Consider the probability that a consecutive $k$ character string of $U^n$ and $V^n$ match. Setting $q = p^2 + (1-p)^2$, this probability is $(n-k+1)\times q^k$. So $$\mathbb{E}(v_{gap}(U^n,V^n)) \geq (n-k+1)\times q^k\times k + 4u$$
+
+Therefore, $\inf_{n}n^{-1}\mathbb{E}(v_{gap}(U^n, V^n)) \geq q^k \times k$. On the other hand, $v_{gap}(U^n,V^n) \leq v_{gap}(U^n,U^n) = n$, so $n^{-1}\mathbb{E}(v_{gap}(U^n, V^n))$ is a bounded sequence, and therefore $\varliminf_{n\rightarrow\infty} \frac{\mathbb{E}(v_{gap}(U^n, V^n))}{n} \geq q^k\times k > 0$; in particular, the limit exists.
+
+To see that $\lim_{n\rightarrow\infty} n^{-1}\mathbb{E}(v_{gap}(U^n, V^n))$ exists and is positive, we use [Fekete's lemma](https://proofwiki.org/wiki/Fekete%27s_Subadditive_Lemma). Write $\alpha_n = \mathbb{E}(v_{gap}(U^n, V^n))$. Then 
+
+$$\begin{equation*} \begin{split}
+\alpha_{n+m} & \leq \mathbb{E}(v_{gap}(U^{n+m}[1,n], V^{n+m}[1,n]) \\
+ & + v_{gap}(U^{n+m}[n+1,n+m], V^{n+m}[n+1,n+m])) \\
+ & = \mathbb{E}(v_{gap}(U^{n}, V^{n})) + \mathbb{E}(v_{gap}(U^{m}, V^{m})) \\
+ & = \alpha_n + \alpha_m
+\end{split} \end{equation*}$$
+
+using the fact that expectation is linear. So the $\alpha_n$ are subadditive, so $\lim_{n\rightarrow\infty} n^{-1}\alpha_n$ exists and is equal to $\varliminf_{n\rightarrow\infty} n^{-1}\alpha_n > 0$.
+
+### Problem 8
+
+Let $u = −3$, $p = \frac{1}{2}$. Write a program to estimate $n^{-1}\mathbb{E}(v_{gap}(U^n, V^n))$.
+
+Now vary $n$ and estimate the limit of $n^{-1}\mathbb{E}(v_{gap}(U^n, V^n))$.
+
+#### Solution
+
+This program is implemented as `AverageDistanceEstimator`.
+
+Below, we tabulate some values of $\hat{\alpha_n} := \frac{1}{k}\sum_{i=1}^kv_{gap}(U_i^n, V_i^n)$ for i.i.d. $U_i^n, V_i^n$ as above; we use $k=1000$.
+
+| $n$ | $\alpha_n$ | $\alpha_n/n$ | | $n$ | $\alpha_n$ | $\alpha_n/n$ |   | $n$ | $\alpha_n$ | $\alpha_n/n$ |
+|--|------|------|-|--|-----|-----|-|--|-----|-----|
+|1 |-0.006|-0.006| |11|1.083|0.098| |21|4.478|0.213|
+|2 | 0.120| 0.060| |12|1.417|0.118| |22|4.917|0.224|
+|3 |-0.076|-0.025| |13|1.633|0.126| |23|5.400|0.235|
+|4 | 0.074| 0.019| |14|2.051|0.147| |24|5.592|0.233|
+|5 | 0.081| 0.016| |15|2.416|0.161| |25|6.183|0.247|
+|6 | 0.073| 0.012| |16|2.586|0.162| |26|6.497|0.250|
+|7 | 0.213| 0.030| |17|2.979|0.175| |27|6.876|0.255|
+|8 | 0.596| 0.075| |18|3.296|0.183| |28|7.190|0.257|
+|9 | 0.628| 0.070| |19|3.961|0.208| |29|7.734|0.267|
+|10| 0.709| 0.071| |20|4.139|0.206| |30|8.029|0.268|
+
+Based on these data, we estimate that $\alpha_n/n \rightarrow 0.27$.
+
+### Problem 9
+
+Suppose we restrict ourselves to suffixes of $S$ and $T$:
+
+$$v_{sfx}(S, T) = \max\{v(S_0, T_0) | S_0 \text{ a suffix of }S, T_0 \text{ a suffix of }T\}.$$
+
+Prove carefully that $$v_{sub}(S, T) = \max\{v_{sfx}(S_0, T_0) | S_0 \text{ a prefix of } S, T_0 \text{ a prefix of } T\}.$$
+
+#### Solution
+
+Suppose $S'$, $T'$ are substrings of $S$ and $T$ respectively such that $v_{sub}(S,T) = v(S',T')$. Let $S' = S[i_1,j_1]$, $T'=T[i_2,j_2]$. Then $v(S',T') = v_{sfx}(S[1,j_1], T[1,j_2])$, by our assumption on $(S', T')$. Moreover, for any prefixes $S_0 = S[1,k_1], T_0 = T[1,k_2]$, $v_{sfx}(S_0,T_0) = v(S_0',T_0') \leq v(S',T')$ for some $S_0',T_0'$ suffixes of $S_0, T_0$, by definition. So 
+
+$$\begin{equation*} \begin{split} 
+\max\{v_{sfx}(S_0, T_0) | S_0 \text{ a prefix of } S, T_0 \text{ a prefix of } T\}  & = v_{sfx}(S[1,j_1], T[1,j_2]) \\
+ & = v(S',T') \\
+ & = v_{sub}(S,T),
+\end{split} \end{equation*}$$
+
+as required.
+
+### Problem 10
+
+Write $V_{sfx}(i, j)$ for $v_{sfx}(S[1, i], T[1, j])$. Prove that
+$$V_{sfx}(i, j) = \max \begin{cases} 0, \\ V_{sfx}(i-1, j-1) + s(S_i, T_j), \\ V_{sfx}(i-1, j) + s(S_i, -), \\ V_{sfx}(i, j-1) + s(-, T_j), \end{cases}$$
+
+with boundary conditions $V_{sfx}(i, 0) = V_{sfx}(0, j) = 0$.
+
+#### Solution
+
+First, note that $v(-,-) = 0$, so we can assume $V_{sfx}(i,j) > 0$. Suppose $S', T'$ are such that $V_{sfx}(i,j) = v(S',T')$. Then consider the last character of the optimal edit transcript from $S'$ to $T'$, which must exist because $S'$ and $T'$ are not both zero. If it is a $D$, then necessarily $V_{sfx}(i,j) = V_{sfx}(i-1,j) + s(S_i,-)$. If it is an $I$, then necessarily $V_{sfx}(i,j) = V_{sfx}(i, j-1) + s(-, T_j)$. If it is an $M$ or $R$, then $V_{sfx}(i,j) = V_{sfx}(i-1, j-1) + s(S_i, T_j)$. At the boundary, it is clearly cheaper to take the empty suffix than to use any number of deletions or insertions. So we are done.
+
+### Problem 11
+
+Find $v_{sub}$ for proteins $C$ and $D$, using the BLOSUM matrix from Section 2 and $s(a, -) = s(-, a) = -2$ for all amino acids $a$.
+
+#### Solution
+
+An algorithm for computing $v_{sub}$ is given as `SubstringAlignment`. 
+
+We find that $v_{sub}(C,D) = 1312$.
